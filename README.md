@@ -1,25 +1,10 @@
 
-# The REGIME CHANGE Package
-**MUSTAFA S EISA** \ 10 APRIL 2017
+# REGIME CHANGE
 
+The package `regimechange` contains tools for estimating regime changes in a bivariate time series setting. Regime changes can be defined with respect to any given metric (eg. correlation or tracking error) and a kernel weighting parameter that controls the fidelity of the estimator to more local changes.
 
 ```python
-from matplotlib import pyplot as plt
 import regimechange as rg
-import numpy as np
-
-plt.style.use('ggplot')
-```
-
-
-```python
-%matplotlib inline
-```
-
-The package `regimechange` contains the tools for estimating regime changes in a bivariate time series setting.
-
-
-```python
 help(rg)
 ```
 
@@ -78,20 +63,25 @@ help(rg)
     
     
 
+The `METRICS` dictionary contains a set of key metrics that define a state change.
 
-The `METRICS` dictionary contains a set of key metrics that define a state change. Let's go through a few examples to make this clear.
+### Usage
 
-### Example: Regime change with respect to $\beta$
+Let's go through a few examples to make this clear.
+
+```python
+from matplotlib import pyplot as plt
+import numpy as np
+```
+
+Consider a discrete regime change that occurs in with respect to the CAPM Beta metric. Specifically, we'll generate data where one time series is almost perfectly correlated with the other and then, at day 68, the correlation flips.
 
 
 ```python
 benchmark = np.random.normal(size=(100,1)) # some benchmark index
 tracking = benchmark.copy() + .5*np.random.normal(size=(100,1)) # fund tracking benchmark
 tracking[68:] = -1*tracking[68:] # flip relationship at day 68
-```
 
-
-```python
 plt.figure(figsize=(12, 6))
 plt.axvline(x=68, color = 'orange', label='regime change', linewidth=3)
 plt.plot(benchmark, label='benchmark index', linewidth=2)
@@ -101,25 +91,22 @@ plt.show()
 ```
 
 
-![png](output_8_0.png)
+![beta_regime_change](https://cloud.githubusercontent.com/assets/13667067/24891341/1822beee-1e2a-11e7-8185-a3e65f0eb18e.png)
 
 
+We can estimate when this regime change occured using the `kernel_split` method:
 
 ```python
-# we can estimate regime change date this using the kernel_split method
-
 data = np.hstack((benchmark, tracking))
 rg.kernel_split(data, rg.METRICS.get('beta'))
 ```
-
-
 
 
     68
 
 
 
-### Example: Regime change with respect to Tracking Error
+Another example is with the metric tracking error. We'll generate data where one time series tacks the other well then suddenly tracks poorly after day 40.
 
 
 ```python
@@ -128,10 +115,7 @@ rg.kernel_split(data, rg.METRICS.get('beta'))
 benchmark = np.random.normal(size=(100,1)) # some benchmark index
 tracking = benchmark.copy() + .1*np.random.normal(size=(100,1)) # fund tracking benchmark
 tracking[40:] = tracking[40:] + np.random.normal(size=(60,1)) # tracking error blows up at day 40
-```
 
-
-```python
 plt.figure(figsize=(12, 6))
 plt.axvline(x=40, color = 'orange', label='regime change', linewidth=3)
 plt.plot(benchmark, label='benchmark index', linewidth=2)
@@ -141,13 +125,12 @@ plt.show()
 ```
 
 
-![png](output_12_0.png)
+![tracking_regime_change](https://cloud.githubusercontent.com/assets/13667067/24891342/1833b410-1e2a-11e7-99b9-88ff995825b5.png)
 
 
+We can again estimate when this regime change occured using the `kernel_split` method:
 
 ```python
-# we can estimate regime change date this using the kernel_split method
-
 data = np.hstack((benchmark, tracking))
 rg.kernel_split(data, rg.METRICS.get('tracking error'))
 ```
@@ -168,3 +151,10 @@ rg.kernel_split(data, rg.METRICS.get('tracking error'))
 
     100 loops, best of 3: 4.91 ms per loop
 
+
+### Future Updates
+
+The following items are scheduled to be included:
+    - Kernel parameter for estimating local regime changes
+    - Regularization for cases when the two regimes have significantly different number of observations used to estimate the metric of interest (unequal variance)
+    - Beyond bivariate regime change
