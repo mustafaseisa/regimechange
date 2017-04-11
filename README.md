@@ -1,7 +1,7 @@
 
 # REGIME CHANGE
 
-This package contains tools for estimating regime changes in a bivariate time series setting. Regime changes can be defined with respect to any given metric (eg. correlation or tracking error) and a kernel weighting parameter that controls the fidelity of the estimator to more local changes.
+This package contains tools for estimating regime changes in a bivariate time series setting. Regime changes can be defined with respect to a given bivariate mapping (eg. correlation, tracking error) and a kernel weighting parameter that controls the fidelity of the estimator to local changes.
 
 ```python
 import regimechange as rg
@@ -19,7 +19,7 @@ help(rg)
     
     FUNCTIONS
         kernel_split(time_series, metric, kernel='Uniform', pad=5)
-            Detection of some instantaneous, potentially local state change.
+            Detection of some instantaneous, potentially local regime change.
             
             Given bivariate time series, metric defining a state change, and
             a weighting kernel defining local fidelity, estimates the date at
@@ -44,7 +44,7 @@ help(rg)
                                             end of the time series that are not
                                             considered to be possible points of
                                             state change. Minimum is two to allow
-                                            statisitcal estimators like Pearson
+                                            statistical estimators like Pearson
                                             correlation coefficient to have
                                             sufficient degrees of freedom.
                                             Maximum is such that there after
@@ -57,9 +57,6 @@ help(rg)
     
     DATA
         METRICS = {'beta': <function <lambda>>, 'tracking error': <function <l...
-    
-    FILE
-        /Users/mustafameisa/Desktop/regimechange.py
     
     
 

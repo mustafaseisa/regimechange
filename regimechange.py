@@ -2,13 +2,25 @@
 has occurred in a bivariate time series setting."""
 
 import numpy as np
+from scipy.stats import norm as gaussian
 
 METRICS = { # library of common metrics which define a state change
-    'beta': lambda ts: np.corrcoef(ts[:, 0], ts[:, 1])[0, 1],
-    'tracking error': lambda ts: np.std(ts[:, 0] - ts[:, 1])
+    'correlation': lambda ts: np.corrcoef(ts[:, 0], ts[:, 1])[0, 1],
+    'tracking error': lambda ts: np.std(ts[:, 0]-ts[:, 1]),
+    'excess return': lambda ts: np.mean(ts[:, 0] - ts[:, 1]),
+    'excess volatility': lambda ts: (1/ts.shape[0]) * np.linalg.norm(
+        ts[:, 0] - ts[:, 1], 2
+        )
 }
 
-def kernel_split(time_series, metric, kernel='Uniform', pad=5):
+KERNELS = { # library of kernels for estimating local regime changes
+    'gaussian': lambda age, bw: gaussian.pdf(range(age), scale=bw),
+    'triangular': lambda age, bw: np.maximum(0, 1-(1/bw)*np.arange(age)),
+    'hyperbolic': lambda age, bw: 1/np.arange(1, age+1)**(1/bw),
+    'uniform': lambda age, bw: np.array([1]*min(bw, age) + [0]*max(0, age-bw))
+}
+
+def kernel_split(time_series, metric, kernel, bandwidth=10, pad=5):
     """Detection of some instantaneous, potentially local state change.
 
     Given bivariate time series, metric defining a state change, and
@@ -48,7 +60,8 @@ def kernel_split(time_series, metric, kernel='Uniform', pad=5):
 
     # typechecks and fail safety:
 
-    # assert kernel in ('Uniform', 'Gaussian', 'Triangular', 'Hyperbolic')
+    assert bandwidth >= 1, 'Bandwidth parameter must be greater than or equal '\
+                            'to one.'
 
     assert isinstance(pad, int), 'Argument pad must be a positive integer.'
     assert pad >= 2, 'At least two observations must be padded on each end ' \
