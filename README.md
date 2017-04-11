@@ -107,8 +107,6 @@ Another example is with the metric tracking error. We'll generate data where one
 
 
 ```python
-# tracking error blows up at day 40
-
 benchmark = np.random.normal(size=(100,1)) # some benchmark index
 tracking = benchmark.copy() + .1*np.random.normal(size=(100,1)) # fund tracking benchmark
 tracking[40:] = tracking[40:] + np.random.normal(size=(60,1)) # tracking error blows up at day 40
@@ -141,9 +139,9 @@ rg.kernel_split(data, rg.METRICS.get('tracking error'))
 
 ```python
 %timeit rg.kernel_split(data, rg.METRICS.get('tracking error'))
-```
 
-    100 loops, best of 3: 4.91 ms per loop
+# 100 loops, best of 3: 4.91 ms per loop
+```
 
 
 ### Future Updates
