@@ -1,7 +1,7 @@
 
 # REGIME CHANGE
 
-The package `regimechange` contains tools for estimating regime changes in a bivariate time series setting. Regime changes can be defined with respect to any given metric (eg. correlation or tracking error) and a kernel weighting parameter that controls the fidelity of the estimator to more local changes.
+This package contains tools for estimating regime changes in a bivariate time series setting. Regime changes can be defined with respect to any given metric (eg. correlation or tracking error) and a kernel weighting parameter that controls the fidelity of the estimator to more local changes.
 
 ```python
 import regimechange as rg
@@ -149,6 +149,6 @@ rg.kernel_split(data, rg.METRICS.get('tracking error'))
 ### Future Updates
 
 The following items are scheduled to be included:
-    * Kernel parameter for estimating local regime changes
-    * Regularization for cases when the two regimes have significantly different number of observations used to estimate the metric of interest (unequal variance)
-    * Beyond bivariate regime change
+* Kernel parameter for estimating local regime changes
+* Regularization for cases when the two regimes have significantly different number of observations used to estimate the metric of interest (unequal variance)
+* Beyond bivariate regime change
