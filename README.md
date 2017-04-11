@@ -99,12 +99,9 @@ We can estimate when this regime change occured using the `kernel_split` method:
 ```python
 data = np.hstack((benchmark, tracking))
 rg.kernel_split(data, rg.METRICS.get('beta'))
+
+# 68
 ```
-
-
-    68
-
-
 
 Another example is with the metric tracking error. We'll generate data where one time series tacks the other well then suddenly tracks poorly after day 40.
 
@@ -133,12 +130,9 @@ We can again estimate when this regime change occured using the `kernel_split` m
 ```python
 data = np.hstack((benchmark, tracking))
 rg.kernel_split(data, rg.METRICS.get('tracking error'))
+
+# 41
 ```
-
-
-
-
-    41
 
 
 
@@ -155,6 +149,6 @@ rg.kernel_split(data, rg.METRICS.get('tracking error'))
 ### Future Updates
 
 The following items are scheduled to be included:
-    - Kernel parameter for estimating local regime changes
-    - Regularization for cases when the two regimes have significantly different number of observations used to estimate the metric of interest (unequal variance)
-    - Beyond bivariate regime change
+    * Kernel parameter for estimating local regime changes
+    * Regularization for cases when the two regimes have significantly different number of observations used to estimate the metric of interest (unequal variance)
+    * Beyond bivariate regime change
