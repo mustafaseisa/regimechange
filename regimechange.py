@@ -1,58 +1,111 @@
-"""Tools for identifying when one or more discrete regime changes
-has occurred in a bivariate time series setting."""
+"""Local and non-parametric methods for identifying when discrete regime
+changes have occurred in a bivariate time series setting."""
 
 import numpy as np
 from scipy.stats import norm as gaussian
 
 METRICS = { # library of common metrics which define a state change
-    'correlation': lambda ts: np.corrcoef(ts[:, 0], ts[:, 1])[0, 1],
-    'tracking error': lambda ts: np.std(ts[:, 0]-ts[:, 1]),
-    'excess return': lambda ts: np.mean(ts[:, 0] - ts[:, 1]),
-    'excess volatility': lambda ts: (1/ts.shape[0]) * np.linalg.norm(
-        ts[:, 0] - ts[:, 1], 2
-        )
+    'correlation': lambda ts, w: _weighted_corr(ts[:, 0], ts[:, 1], w),
+    'tracking error': lambda ts, w: _weighted_std(ts[:, 0] - ts[:, 1], w),
+    'excess return': lambda ts, w: np.average(ts[:, 0] - ts[:, 1], weights=w),
+    'excess volatility': lambda ts, w: _weighted_2ndmom(ts[:, 0] - ts[:, 1], w)
 }
 
 KERNELS = { # library of kernels for estimating local regime changes
     'gaussian': lambda age, bw: gaussian.pdf(range(age), scale=bw),
-    'triangular': lambda age, bw: np.maximum(0, 1-(1/bw)*np.arange(age)),
     'hyperbolic': lambda age, bw: 1/np.arange(1, age+1)**(1/bw),
-    'uniform': lambda age, bw: np.array([1]*min(bw, age) + [0]*max(0, age-bw))
+    'triangular': lambda age, bw: np.maximum(0, 1-(1/bw)*np.arange(age)),
+    'uniform': lambda age, bw: np.array([1]*min(int(bw), age) + \
+                                            [0]*max(0, age-int(bw)))
 }
+
+def _weighted_2ndmom(array, weights):
+    """Weighted uncentralized second moment."""
+
+    weighted_var = np.average(array**2, weights=weights)
+    return np.sqrt(weighted_var)
+
+def _weighted_std(array, weights):
+    """Weighted standard deviation."""
+
+    weighted_mean = np.average(array, weights=weights)
+    weighted_var = np.average((array - weighted_mean)**2, weights=weights)
+    return np.sqrt((array.shape[0]/(array.shape[0]-1)) * weighted_var)
+
+def _weighted_corr(array_x, array_y, weights):
+    """Weighted standard deviation."""
+
+    mean_x = np.average(array_x, weights=weights)
+    mean_y = np.average(array_y, weights=weights)
+
+    rss_x = np.linalg.norm(weights*(array_x - mean_x), 2)
+    rss_y = np.linalg.norm(weights*(array_y - mean_y), 2)
+
+    inner_prod = (array_x - mean_x).T.dot(weights * (array_y - mean_y))
+
+    return inner_prod/(rss_x * rss_y)
 
 def kernel_split(time_series, metric, kernel, bandwidth=10, pad=5):
     """Detection of some instantaneous, potentially local state change.
 
-    Given bivariate time series, metric defining a state change, and
-    a weighting kernel defining local fidelity, estimates the date at
-    which the two regimes are maximally different with respect to the
-    provided metric. Function then returns the date a new regime
-    begins.
+    Given a bivariate time series, metric defining a state change, and
+    a weighting kernel controling fidelity to local information,
+    estimates the date at which a regime change has occurred with respect
+    to the provided metric. Specifically, the function returns the date a
+    the new regime begins.
 
     @arg    {np.array}  time_series 2D array containing time series data
                                     with dates in ascending order along
-                                    axis 0 and assets along axis 1.'
+                                    axis 0 and assets along axis 1.
 
     @arg    {function}  metric      A metric of interest that will define
                                     the state change between the two time
-                                    series. Must be a function that
-                                    takes a 2D array of the same format
-                                    as the time_series argument and
-                                    returns a scalar value defining the
-                                    state between the two series (eg.
-                                    correlation coefficient).
+                                    series.
+
+            @arg        {np.array}  Bivariate time series; same format as
+                                    time_series above. Will be used as
+                                    data for which metric is calculated.
+
+            @arg        {np.array}  Flat np.array of same length as
+                                    previous argument; used to weight
+                                    observations in calculation of metric
+                                    of interest.
+
+            @arg        {float}     The metric of interest returned as a
+                                    scalar.
+
+    @arg    {function}  kernel      A kernel of defining fidelity to
+                                    local regime changes.
+
+            @arg        {int}       The length of the sequence of weights
+                                    outputted by the kernel function.
+
+            @arg        {float}     Bandwidth controlling fidelity of
+                                    the kernel to local information.
+
+            @return     {np.array}  Array of positive floats defining
+                                    sequence of (typically decaying)
+                                    kernel weights. Need not be
+                                    normalized as kernel_split method
+                                    will perform the normalization
+                                    internally.
+
+    @arg    {float}     bandwidth   Kernel bandwidth to be passed to the
+                                    supplied kernel function. Forced to
+                                    be be greater than or equal to one to
+                                    accomodate KNN and other discrete
+                                    kernels.
 
     @arg    {int}       pad         The number of observations on each
                                     end of the time series that are not
                                     considered to be possible points of
                                     state change. Minimum is two to allow
-                                    statisitcal estimators like Pearson
-                                    correlation coefficient to have
-                                    sufficient degrees of freedom.
-                                    Maximum is such that there after
-                                    padding, there are at least two dates
-                                    under consideration as points of
-                                    state change.
+                                    statistical estimators like standard
+                                    deviation to have sufficient degrees
+                                    of freedom. Maximum is such that
+                                    there after padding, there are at
+                                    least two dates under consideration
+                                    as points of state change.
 
     @return {int}       The index corresponding to the date the new
                         regime begins.
@@ -86,12 +139,15 @@ def kernel_split(time_series, metric, kernel, bandwidth=10, pad=5):
 
     for partition in range(pad, num_dates-pad):
 
-        regime_a = time_series[:partition]
-        regime_b = time_series[partition:]
+        regime_a = time_series[:partition] # left partition of time series
+        weights_a = kernel(partition, bandwidth)[::-1]
+
+        regime_b = time_series[partition:] # right partition of time series
+        weights_b = kernel(num_dates - partition, bandwidth)
 
         regime_discrepancy.append(
             abs(
-                metric(regime_a) - metric(regime_b)
+                metric(regime_a, weights_a) - metric(regime_b, weights_b)
                 )
             )
 
