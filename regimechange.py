@@ -1,7 +1,6 @@
 """Local and non-parametric methods for identifying when discrete regime
 changes have occurred in a bivariate time series setting."""
 
-from math import log2, ceil
 from operator import add
 import numpy as np
 from scipy.stats import norm as gaussian
@@ -200,7 +199,6 @@ def succesive_split(time_series, kernel_splitter, num_splits):
     if num_splits == 1:
         return [kernel_splitter(time_series)]
     else:
-        total_splits = ceil(log2(num_splits))
         breakpoints = [(0, None), (time_series.shape[0], None)]
 
         def index_map(date_pair):
@@ -218,7 +216,6 @@ def succesive_split(time_series, kernel_splitter, num_splits):
 
         while len(breakpoints) - 2 < num_splits:
 
-            total_splits -= 1
             dates = sorted([date for date, value in breakpoints]) # just dates
             windows = zip(dates[:-1], dates[1:]) # snippets
             new_breakpoints = [ # new regime change points
