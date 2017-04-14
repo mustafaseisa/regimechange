@@ -1,7 +1,7 @@
 
 # DETECTING REGIME CHANGES WITH KERNELS
 
-This package contains tools for the local and non-parametric detection of regime changes in a bivariate time series setting. Regime changes can be defined with respect to a given bivariate mapping (eg. correlation, tracking error) and a kernel weighting parameter that controls the fidelity of the estimator to local changes.
+This package contains tools for the local, non-parametric detection of regime changes in a bivariate time series setting. Regime changes can be defined with respect to a given bivariate mapping (eg. correlation, tracking error) and a kernel weighting parameter that controls the fidelity of the estimator to local changes.
 
 
 ```python

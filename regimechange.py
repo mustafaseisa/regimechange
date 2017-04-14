@@ -1,4 +1,4 @@
-"""Local and non-parametric methods for identifying when discrete regime
+"""Local, semi-parametric methods for identifying when discrete regime
 changes have occurred in a bivariate time series setting."""
 
 from operator import add
