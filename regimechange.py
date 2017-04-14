@@ -58,7 +58,7 @@ def kernel_split(time_series, metric, kernel, bandwidth=10, pad=2):
 
     @arg    {np.array}  time_series 2D array containing time series data
                                     with dates in ascending order along
-                                    axis 0 and assets along axis 1.
+                                    axis 0 and covariates along axis 1.
 
     @arg    {function}  metric      A metric of interest that will define
                                     the state change between the two time
@@ -108,8 +108,9 @@ def kernel_split(time_series, metric, kernel, bandwidth=10, pad=2):
                                     least two dates under consideration
                                     as points of state change.
 
-    @return {int}       The index corresponding to the date the new
-                        regime begins.
+    @return {tuple}     Pair with index of split point in first position
+                        and kernel-weighted metric difference in second
+                        position.
     """
 
     # typechecks and fail safety:
@@ -125,11 +126,12 @@ def kernel_split(time_series, metric, kernel, bandwidth=10, pad=2):
     assert np.issubdtype(time_series.dtype, np.number), 'Time series array ' \
                                     'can only contain only numerical values.'
     assert time_series.ndim == 2, 'Time series array must be 2D with dates ' \
-                        'ascending along axis 0 and assets along axis 1.'
+                        'ascending along axis 0 and covariates along axis 1.'
     assert (time_series != np.nan).all() and (time_series != np.infty).all(), \
                 'Time series array cannot contain missing or infinite values.'
-    num_dates, num_assets = time_series.shape # dimensions of data
-    assert num_assets == 2, 'Time series array can only contain two assets.'
+    num_dates, num_covariates = time_series.shape # dimensions of data
+    assert num_covariates == 2, 'Time series array can only contain two '\
+                                    'covariates.'
 
     pad = round(pad*bandwidth) # redefine pad as a constant number of obs
     assert num_dates - 2*pad >= 3, 'Time series must have at least three ' \
@@ -159,8 +161,38 @@ def kernel_split(time_series, metric, kernel, bandwidth=10, pad=2):
 
     return (split_date + pad, regime_discrepancy[split_date])
 
-def multi_split(time_series, kernel_splitter, num_splits):
-    """Blah blah blah."""
+def succesive_split(time_series, kernel_splitter, num_splits):
+    """Detects multiple points of regime change in bivariate time series.
+
+    Splits given bivariate time series several times at regime change
+    points defined by the provided kernel_splitter function. If number
+    of desired splits is greater than detectable regime changes, then all
+    detected regime changes are returned.
+
+    @arg    {np.array}  time_series     2D array containing time series
+                                        data with dates in ascending
+                                        order along axis 0 and covariates
+                                        along axis 1.
+
+    @arg    {function}  kernel_splitter One-argument function that takes
+                                        a bivariate time series of the
+                                        same format as the previous arg
+                                        and returns the index defining
+                                        a regime change point (eg.
+                                        `kernel_splitter = lambda x:
+                                        kernel_split(x, ...)`).
+
+            @arg        {np.array}      Bivariate time series, same form
+                                        as time_series arg above.
+
+    @arg    {int}       num_splits      The number of desired regime
+                                        changes to be detected via
+                                        kernel_splitter.
+
+    @return {list}      List of tuples specifying regime change points.
+                        Each tuple is of the form (index of split point,
+                        kernel-weighted metric difference).
+    """
 
     assert isinstance(num_splits, int)
     assert num_splits >= 1
@@ -172,13 +204,16 @@ def multi_split(time_series, kernel_splitter, num_splits):
         breakpoints = [(0, None), (time_series.shape[0], None)]
 
         def index_map(date_pair):
+            """Runs kernel_splitter on slice of time_series defined by
+            date_pair."""
+
             try:
                 return tuple(map(
                     add,
                     (date_pair[0], 0),
                     kernel_splitter(time_series[date_pair[0]:date_pair[1]])
                     ))
-            except:
+            except AssertionError:
                 return None
 
         while len(breakpoints) - 2 < num_splits:
