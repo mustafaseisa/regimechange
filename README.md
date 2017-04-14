@@ -1,96 +1,12 @@
 
-# Non-Parametric Discrete Regime Change Detection
+# DETECTING REGIME CHANGES WITH KERNELS
 
 This package contains tools for the local and non-parametric detection of regime changes in a bivariate time series setting. Regime changes can be defined with respect to a given bivariate mapping (eg. correlation, tracking error) and a kernel weighting parameter that controls the fidelity of the estimator to local changes.
 
 
 ```python
 import regimechange as rg
-help(rg)
 ```
-
-    Help on package regimechange:
-    
-    NAME
-        regimechange
-    
-    PACKAGE CONTENTS
-        regimechange
-    
-    FUNCTIONS
-        kernel_split(time_series, metric, kernel, bandwidth=10, pad=5)
-            Detection of some instantaneous, potentially local state change.
-            
-            Given a bivariate time series, metric defining a state change, and
-            a weighting kernel controling fidelity to local information,
-            estimates the date at which a regime change has occurred with respect
-            to the provided metric. Specifically, the function returns the date a
-            the new regime begins.
-            
-            @arg    {np.array}  time_series 2D array containing time series data
-                                            with dates in ascending order along
-                                            axis 0 and assets along axis 1.
-            
-            @arg    {function}  metric      A metric of interest that will define
-                                            the state change between the two time
-                                            series.
-            
-                    @arg        {np.array}  Bivariate time series; same format as
-                                            time_series above. Will be used as
-                                            data for which metric is calculated.
-            
-                    @arg        {np.array}  Flat np.array of same length as
-                                            previous argument; used to weight
-                                            observations in calculation of metric
-                                            of interest.
-            
-                    @arg        {float}     The metric of interest returned as a
-                                            scalar.
-            
-            @arg    {function}  kernel      A kernel of defining fidelity to
-                                            local regime changes.
-            
-                    @arg        {int}       The length of the sequence of weights
-                                            outputted by the kernel function.
-            
-                    @arg        {float}     Bandwidth controlling fidelity of
-                                            the kernel to local information.
-            
-                    @return     {np.array}  Array of positive floats defining
-                                            sequence of (typically decaying)
-                                            kernel weights. Need not be
-                                            normalized as kernel_split method
-                                            will perform the normalization
-                                            internally.
-            
-            @arg    {float}     bandwidth   Kernel bandwidth to be passed to the
-                                            supplied kernel function. Forced to
-                                            be be greater than or equal to one to
-                                            accomodate KNN and other discrete
-                                            kernels.
-            
-            @arg    {int}       pad         The number of observations on each
-                                            end of the time series that are not
-                                            considered to be possible points of
-                                            state change. Minimum is two to allow
-                                            statisitcal estimators like Pearson
-                                            correlation coefficient to have
-                                            sufficient degrees of freedom.
-                                            Maximum is such that there after
-                                            padding, there are at least two dates
-                                            under consideration as points of
-                                            state change.
-            
-            @return {int}       The index corresponding to the date the new
-                                regime begins.
-    
-    DATA
-        KERNELS = {'gaussian': <function <lambda>>, 'hyperbolic': <function <l...
-        METRICS = {'correlation': <function <lambda>>, 'excess return': <funct...
-    
-    
-    
-
 
 The `METRICS` dictionary contains a set of pre-defined metric functions that define a state change.
 
@@ -99,7 +15,7 @@ The `METRICS` dictionary contains a set of pre-defined metric functions that def
 print('Pre-defined metrics include: ' + ', '.join(rg.METRICS.keys()) + '.')
 ```
 
-    Pre-defined metrics include: excess volatility, excess return, tracking error, correlation.
+    Pre-defined metrics include: excess return, excess volatility, correlation, tracking error.
 
 
 The `KERNELS` dictionary contains a set of pre-defined kernels that control sensitivity to local information.
@@ -109,10 +25,10 @@ The `KERNELS` dictionary contains a set of pre-defined kernels that control sens
 print('Pre-defined kernels include: ' + ', '.join(rg.KERNELS.keys()) + '.')
 ```
 
-    Pre-defined kernels include: triangular, hyperbolic, gaussian, uniform.
+    Pre-defined kernels include: hyperbolic, gaussian, triangular, uniform.
 
 
-The Gaussian and Uniform (aka K-nearest-neighbor) kernls are well known. We provide the other two for completeness. The hyperbolic kernel $\kappa_h:\mathbb{R}^n\times\mathbb{R}^n \mapsto \mathbb{R}_{++}$ with bandwidth $b$ is of the form
+The Gaussian and Uniform (aka k-nearest-neighbor) kernels are well known. We provide the other two for completeness. The hyperbolic kernel $\kappa_h:\mathbb{R}^n\times\mathbb{R}^n \mapsto \mathbb{R}_{++}$ with bandwidth $b$ is of the form
 
 $$\kappa_h(x, y) = \left(\frac{1}{1 + \|x - y\|}\right)^{b}$$
 
@@ -129,7 +45,9 @@ We demonstrate the use of this package and its effectiveness in the following ex
 from matplotlib import pyplot as plt
 import regimechange as rg
 import numpy as np
+
 plt.style.use('ggplot')
+%matplotlib inline
 ```
 
 Consider a discrete regime change that occurs in with respect to the Pearson correlation coefficient. Specifically, we'll generate data where one time series is almost perfectly correlated with the other and then, at day 68, the correlation flips signs.
@@ -142,14 +60,14 @@ tracking[68:] = -1*tracking[68:] # flip relationship at day 68
 
 plt.figure(figsize=(12, 6))
 plt.axvline(x=68, color = 'orange', label='regime change', linewidth=3)
-plt.plot(benchmark, label='benchmark index', linewidth=2)
-plt.plot(tracking, label='tracking fund', linestyle='--')
+plt.plot(np.cumsum(benchmark), label='benchmark index', linewidth=2)
+plt.plot(np.cumsum(tracking), label='tracking fund', linestyle='--')
 plt.legend()
 plt.show()
 ```
 
 
-![corr_regime_change](https://cloud.githubusercontent.com/assets/13667067/24891341/1822beee-1e2a-11e7-8185-a3e65f0eb18e.png)
+![correlation_regime](https://cloud.githubusercontent.com/assets/13667067/25038748/0b48b722-20b5-11e7-88de-0bf85c061fcd.png)
 
 
 We can estimate when this regime change occurred using the `kernel_split` method:
@@ -160,33 +78,96 @@ data = np.hstack((benchmark, tracking))
 rg.kernel_split(
     time_series=data,
     metric=rg.METRICS['correlation'],
-    kernel=rg.KERNELS['gaussian'],
-    bandwidth=20,
-    pad=10
+    kernel=rg.KERNELS['uniform'],
+    bandwidth=25,
+    pad=1
 )
-
-# 68
 ```
 
 
-Another example is with the metric tracking error. We'll generate data where one time series tracks the other well then suddenly tracks poorly starting on day 40.
+
+
+    (68, 1.8800332588540651)
+
+
+
+Suppose there are multiple correlation regime changes.
 
 
 ```python
-benchmark = np.random.normal(size=(100,1)) # some benchmark index
-tracking = benchmark.copy() + .1*np.random.normal(size=(100,1)) # fund tracking benchmark
-tracking[40:] = tracking[40:] + np.random.normal(size=(60,1)) # tracking error blows up at day 40
+data = np.vstack((data, data))
 
 plt.figure(figsize=(12, 6))
-plt.axvline(x=41, color = 'orange', label='regime change', linewidth=3)
-plt.plot(benchmark, label='benchmark index', linewidth=2)
-plt.plot(tracking, label='tracking fund', linestyle='--')
+plt.axvline(x=68, color = 'orange', label='regime change 1', linewidth=3)
+plt.axvline(x=100, color = 'purple', label='regime change 2', linewidth=3)
+plt.axvline(x=169, color = 'green', label='regime change 2', linewidth=3)
+plt.plot(np.cumsum(data[:, 0]), label='benchmark index', linewidth=2)
+plt.plot(np.cumsum(data[:, 1]), label='tracking fund', linestyle='--')
 plt.legend()
 plt.show()
 ```
 
 
-![tracking_regime_change](https://cloud.githubusercontent.com/assets/13667067/24891342/1833b410-1e2a-11e7-99b9-88ff995825b5.png)
+![multiple correlation regimes](https://cloud.githubusercontent.com/assets/13667067/25038750/0b693d6c-20b5-11e7-9b10-790c004daf96.png)
+
+
+For detecting these several regime changes, we can turn to the `successive_split` method which implements some regime change mechanism (like `kernel_split`) recursively. For this, we'll need a univariate function that outputs the location of a regime change such as the following.
+
+
+```python
+ks = lambda time_series: rg.kernel_split(
+    time_series,
+    metric=rg.METRICS['correlation'],
+    kernel=rg.KERNELS['triangular'],
+    bandwidth=25,
+    pad=1
+)
+```
+
+Then we can run the `successive_split` method, specifying a hypothesis number of splits in the argument `num_splits`. The `successive_split` method works by identifying a regime change, dividing the time series into two partitions, then re-performing detection recursively on each partition. By this logic, $\mathcal{O}\left(2^{\lceil \log_2(n) \rceil}\right)$ regime changes will be computed and the top $n$ most drastic estimated regime changes will be returned, where $n$ represents `num_splits`. Better results are thus obtained by choosing a conservatively high `num_splits` so that enough exploration takes place before the results are ranked.
+
+For this case, we'll set `num_splits` to 5, an upper bound for how many regimes we expect to have in the data.
+
+
+```python
+rg.successive_split(
+    time_series=data,
+    kernel_splitter=ks,
+    num_splits=5
+)
+```
+
+
+
+
+    [(168, 1.9005015889472829),
+     (68, 1.9005015889472827),
+     (100, 1.8256333481430742),
+     (31, 0.095901802064368602),
+     (131, 0.095901802064368602)]
+
+
+
+As can be seen, the three regime changes are identified and ranked at the top with large values while the latter two returned items have significantly lower values, signifying that a regime change likely did not occur at those times.
+
+Another example is with the metric tracking error. We'll generate data where one time series tacks the other well then suddenly tracks poorly starting on day 40.
+
+
+```python
+benchmark = np.random.normal(size=(100,1)) # some benchmark index
+tracking = benchmark.copy() + .5*np.random.normal(size=(100,1)) # fund tracking benchmark
+tracking[40:] = tracking[40:] + np.random.normal(size=(60,1)) # tracking error blows up at day 40
+
+plt.figure(figsize=(12, 6))
+plt.axvline(x=41, color = 'orange', label='regime change', linewidth=3)
+plt.plot(np.cumsum(benchmark), label='benchmark index', linewidth=2)
+plt.plot(np.cumsum(tracking), label='tracking fund', linestyle='--')
+plt.legend()
+plt.show()
+```
+
+
+![tracking error](https://cloud.githubusercontent.com/assets/13667067/25038749/0b65c880-20b5-11e7-9b2f-a67707b91785.png)
 
 
 We can again estimate when this regime change occurred using the `kernel_split` method:
@@ -197,13 +178,17 @@ data = np.hstack((benchmark, tracking))
 rg.kernel_split(
     time_series=data,
     metric=rg.METRICS['tracking error'],
-    kernel=rg.KERNELS['hyperbolic'],
-    bandwidth=5,
-    pad=10
+    kernel=rg.KERNELS['gaussian'],
+    bandwidth=10
 )
-
-# 40
 ```
+
+
+
+
+    (41, 0.58183784971618535)
+
+
 
 ### Speed Test
 
@@ -214,14 +199,9 @@ rg.kernel_split(
     metric=rg.METRICS['tracking error'],\
     kernel=rg.KERNELS['hyperbolic'],\
     bandwidth=10,\
-    pad=10\
+    pad=1\
 )
-
-# 100 loops, best of 3: 7.83 ms per loop
 ```
 
-### Future Updates
+    100 loops, best of 3: 16.6 ms per loop
 
-The following items are scheduled to be included:
-* Regularization for cases when the two regimes have significantly different number of observations used to estimate the metric of interest (unequal variance)
-* Beyond bivariate regime change

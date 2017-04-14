@@ -46,7 +46,7 @@ def _weighted_corr(array_x, array_y, weights):
 
     return inner_prod/(rss_x * rss_y)
 
-def kernel_split(time_series, metric, kernel, bandwidth=10, pad=2):
+def kernel_split(time_series, metric, kernel, bandwidth=10, pad=1):
     """Detection of some instantaneous, potentially local state change.
 
     Given a bivariate time series, metric defining a state change, and
@@ -160,7 +160,7 @@ def kernel_split(time_series, metric, kernel, bandwidth=10, pad=2):
 
     return (split_date + pad, regime_discrepancy[split_date])
 
-def succesive_split(time_series, kernel_splitter, num_splits):
+def successive_split(time_series, kernel_splitter, num_splits):
     """Detects multiple points of regime change in bivariate time series.
 
     Splits given bivariate time series several times at regime change
