@@ -117,9 +117,6 @@ def kernel_split(time_series, metric, kernel, bandwidth=10, pad=1):
     assert bandwidth >= 2, 'Bandwidth parameter must be greater than or equal '\
                             'to two.'
 
-    assert pad >= 1, 'At least one bandwidth must be padded on each end ' \
-                        'of the time series array.'
-
     assert isinstance(time_series, np.ndarray), 'Time series must be numpy ' \
                                                      'array.'
     assert np.issubdtype(time_series.dtype, np.number), 'Time series array ' \
@@ -133,6 +130,8 @@ def kernel_split(time_series, metric, kernel, bandwidth=10, pad=1):
                                     'covariates.'
 
     pad = round(pad*bandwidth) # redefine pad as a constant number of obs
+    assert pad >= 2, 'At least two observations must be padded on each end ' \
+                        'of the time series array.'
     assert num_dates - 2*pad >= 3, 'Time series must have at least three ' \
                                         'observations after padding.'
 
