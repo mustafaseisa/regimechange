@@ -1,6 +1,8 @@
 """Local and non-parametric methods for identifying when discrete regime
 changes have occurred in a bivariate time series setting."""
 
+from math import log2, ceil
+from operator import add
 import numpy as np
 from scipy.stats import norm as gaussian
 
@@ -38,14 +40,14 @@ def _weighted_corr(array_x, array_y, weights):
     mean_x = np.average(array_x, weights=weights)
     mean_y = np.average(array_y, weights=weights)
 
-    rss_x = np.linalg.norm(weights*(array_x - mean_x), 2)
-    rss_y = np.linalg.norm(weights*(array_y - mean_y), 2)
+    rss_x = np.linalg.norm(np.sqrt(weights)*(array_x - mean_x), 2)
+    rss_y = np.linalg.norm(np.sqrt(weights)*(array_y - mean_y), 2)
 
     inner_prod = (array_x - mean_x).T.dot(weights * (array_y - mean_y))
 
     return inner_prod/(rss_x * rss_y)
 
-def kernel_split(time_series, metric, kernel, bandwidth=10, pad=5):
+def kernel_split(time_series, metric, kernel, bandwidth=10, pad=2):
     """Detection of some instantaneous, potentially local state change.
 
     Given a bivariate time series, metric defining a state change, and
@@ -92,17 +94,16 @@ def kernel_split(time_series, metric, kernel, bandwidth=10, pad=5):
 
     @arg    {float}     bandwidth   Kernel bandwidth to be passed to the
                                     supplied kernel function. Forced to
-                                    be be greater than or equal to one to
-                                    accomodate KNN and other discrete
-                                    kernels.
+                                    be be greater than or equal to two so
+                                    that statistical estimators of
+                                    correlation and standard deviation
+                                    have sufficient degrees of freedom.
 
-    @arg    {int}       pad         The number of observations on each
-                                    end of the time series that are not
-                                    considered to be possible points of
-                                    state change. Minimum is two to allow
-                                    statistical estimators like standard
-                                    deviation to have sufficient degrees
-                                    of freedom. Maximum is such that
+    @arg    {int}       pad         round(pad * bandwidth) is the number
+                                    of observations on each end of the
+                                    time series that are not considered
+                                    to be candidate points of
+                                    statechange. Maximum is such that
                                     there after padding, there are at
                                     least two dates under consideration
                                     as points of state change.
@@ -113,11 +114,10 @@ def kernel_split(time_series, metric, kernel, bandwidth=10, pad=5):
 
     # typechecks and fail safety:
 
-    assert bandwidth >= 1, 'Bandwidth parameter must be greater than or equal '\
-                            'to one.'
+    assert bandwidth >= 2, 'Bandwidth parameter must be greater than or equal '\
+                            'to two.'
 
-    assert isinstance(pad, int), 'Argument pad must be a positive integer.'
-    assert pad >= 2, 'At least two observations must be padded on each end ' \
+    assert pad >= 1, 'At least one bandwidth must be padded on each end ' \
                         'of the time series array.'
 
     assert isinstance(time_series, np.ndarray), 'Time series must be numpy ' \
@@ -130,7 +130,9 @@ def kernel_split(time_series, metric, kernel, bandwidth=10, pad=5):
                 'Time series array cannot contain missing or infinite values.'
     num_dates, num_assets = time_series.shape # dimensions of data
     assert num_assets == 2, 'Time series array can only contain two assets.'
-    assert num_dates - 2*pad >= 3, 'Time series must have at least five ' \
+
+    pad = round(pad*bandwidth) # redefine pad as a constant number of obs
+    assert num_dates - 2*pad >= 3, 'Time series must have at least three ' \
                                         'observations after padding.'
 
     # estimating breakpoint
@@ -145,10 +147,57 @@ def kernel_split(time_series, metric, kernel, bandwidth=10, pad=5):
         regime_b = time_series[partition:] # right partition of time series
         weights_b = kernel(num_dates - partition, bandwidth)
 
+        # print((metric(regime_a, weights_a), metric(regime_b, weights_b)))
+
         regime_discrepancy.append(
             abs(
                 metric(regime_a, weights_a) - metric(regime_b, weights_b)
                 )
             )
 
-    return np.argmax(regime_discrepancy) + pad
+    split_date = np.argmax(regime_discrepancy)
+
+    return (split_date + pad, regime_discrepancy[split_date])
+
+def multi_split(time_series, kernel_splitter, num_splits):
+    """Blah blah blah."""
+
+    assert isinstance(num_splits, int)
+    assert num_splits >= 1
+
+    if num_splits == 1:
+        return [kernel_splitter(time_series)]
+    else:
+        total_splits = ceil(log2(num_splits))
+        breakpoints = [(0, None), (time_series.shape[0], None)]
+
+        def index_map(date_pair):
+            try:
+                return tuple(map(
+                    add,
+                    (date_pair[0], 0),
+                    kernel_splitter(time_series[date_pair[0]:date_pair[1]])
+                    ))
+            except:
+                return None
+
+        while len(breakpoints) - 2 < num_splits:
+
+            total_splits -= 1
+            dates = sorted([date for date, value in breakpoints]) # just dates
+            windows = zip(dates[:-1], dates[1:]) # snippets
+            new_breakpoints = [ # new regime change points
+                pair for pair in map(index_map, windows) if pair is not None
+                ]
+            if len(new_breakpoints) == 0:
+                break
+            else:
+                breakpoints += new_breakpoints
+
+        breakpoints = sorted(
+            breakpoints[2:],
+            key=lambda pair: pair[1],
+            reverse=True
+            )
+
+        return breakpoints[:num_splits]
